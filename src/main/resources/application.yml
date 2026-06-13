@@ -1,0 +1,17 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:mysql://mysql:3306/flowable?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: flowable
+    password: flowable
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+flowable:
+  database-schema-update: true
+  check-process-definitions: false
