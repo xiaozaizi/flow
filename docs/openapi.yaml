@@ -1,0 +1,97 @@
+openapi: 3.0.0
+info:
+  title: Flowable SaaS PoC API
+  version: 0.1.0
+paths:
+  /tenants:
+    post:
+      summary: Create tenant (onboarding)
+      parameters:
+        - name: tenantId
+          in: query
+          required: true
+          schema: { type: string }
+        - name: name
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: tenant created
+  /api/process/start/{processKey}:
+    post:
+      parameters:
+        - name: processKey
+          in: path
+          required: true
+          schema: { type: string }
+        - name: X-Tenant-Id
+          in: header
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: started }
+  /api/tasks/{taskId}/approve:
+    post:
+      summary: Approve task, create approval record
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: X-Tenant-Id
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                comment: { type: string }
+                attachmentIds: { type: string, description: "comma separated ids" }
+      responses:
+        '200': { description: ok }
+  /api/tasks/{taskId}/returnTo:
+    post:
+      summary: Return task to a specified historic activity
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: targetActivityId
+          in: query
+          required: true
+          schema: { type: string }
+        - name: reason
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: returned }
+  /api/tasks/{taskId}/attachments:
+    post:
+      summary: Upload attachment (multipart). If comment provided, create approval record.
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: { type: string, format: binary }
+                comment: { type: string }
+      responses:
+        '200': { description: uploaded }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
