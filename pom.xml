@@ -46,6 +46,13 @@
       <version>${flowable.version}</version>
     </dependency>
 
+    <!-- MinIO client (S3 compatible) - used to upload to Huawei OBS via S3 compatible endpoint -->
+    <dependency>
+      <groupId>io.minio</groupId>
+      <artifactId>minio</artifactId>
+      <version>8.5.4</version>
+    </dependency>
+
     <!-- Lombok (optional) -->
     <dependency>
       <groupId>org.projectlombok</groupId>
