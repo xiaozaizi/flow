@@ -9,7 +9,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.audit.AuditService;
+
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class ReturnService {
@@ -19,16 +28,20 @@ public class ReturnService {
     private final TaskService taskService;
     private final RepositoryService repositoryService;
     private final ReturnPolicyRepository policyRepository;
+    private final AuditService auditService;
+    private final RestTemplate restTemplate;
 
     @Value("${app.return.max-times:3}")
     private int maxTimes;
 
-    public ReturnService(ReturnRecordRepository repo, RuntimeService runtimeService, TaskService taskService, RepositoryService repositoryService, ReturnPolicyRepository policyRepository) {
+    public ReturnService(ReturnRecordRepository repo, RuntimeService runtimeService, TaskService taskService, RepositoryService repositoryService, ReturnPolicyRepository policyRepository, AuditService auditService, RestTemplate restTemplate) {
         this.repo = repo;
         this.runtimeService = runtimeService;
         this.taskService = taskService;
         this.repositoryService = repositoryService;
         this.policyRepository = policyRepository;
+        this.auditService = auditService;
+        this.restTemplate = restTemplate;
     }
 
     @Transactional
@@ -76,10 +89,51 @@ public class ReturnService {
         rr.increment();
         rr.setLast(userId, reason);
         repo.save(rr);
+
+        // audit
+        auditService.record(tenantId, userId, "RETURN", "taskId=" + taskId + ",returnTo=" + targetActivityId + ",reason=" + reason + ",times=" + rr.getTimes());
+
+        // immediate callback to business system if configured
+        sendCallbackIfConfigured(piId, "RETURNED", rr.getId(), tenantId);
     }
 
     public void resubmit(String processInstanceId, String userId) {
         // resubmit means set status back to active and continue
         runtimeService.setVariable(processInstanceId, "status", "ACTIVE");
+        // notify business system about resubmit if configured
+        auditService.record(null, userId, "RESUBMIT", "processInstanceId=" + processInstanceId);
+        sendCallbackIfConfigured(processInstanceId, "RESUBMITTED", null, null);
+    }
+
+    private void sendCallbackIfConfigured(String processInstanceId, String status, Long returnRecordId, String tenantId) {
+        try {
+            Object cbObj = runtimeService.getVariable(processInstanceId, "businessCallbackUrl");
+            if (cbObj == null) cbObj = runtimeService.getVariable(processInstanceId, "businessCallback");
+            if (cbObj == null) return;
+            String callbackUrl = cbObj.toString();
+
+            Object businessKeyObj = runtimeService.getVariable(processInstanceId, "businessKey");
+            String businessKey = businessKeyObj == null ? null : businessKeyObj.toString();
+
+            String deliveryId = UUID.randomUUID().toString();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("X-Delivery-Id", deliveryId);
+
+            Map<String, Object> payload = Map.of(
+                    "processInstanceId", processInstanceId,
+                    "businessKey", businessKey,
+                    "status", status,
+                    "returnRecordId", returnRecordId
+            );
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
+
+            restTemplate.postForEntity(callbackUrl, entity, String.class);
+            // record callback audit
+            auditService.record(tenantId, "system", "CALLBACK_SENT", "url=" + callbackUrl + ",deliveryId=" + deliveryId + ",status=" + status);
+        } catch (Exception e) {
+            // log and record failed callback
+            auditService.record(tenantId, "system", "CALLBACK_FAILED", "processInstanceId=" + processInstanceId + ",err=" + e.getMessage());
+        }
     }
 }
