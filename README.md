@@ -1,12 +1,19 @@
-# OBS & ApprovalRecord integration
+# Security and OBS secrets
 
-- OBS (Huawei Cloud) is accessed via S3-compatible MinIO client. Configure in application.yml under app.obs.
-- ApprovalRecord entity groups comment + attachments. Task detail endpoint returns approval records with presigned download URLs.
-- Frontend: minimal static page under frontend/ that fetches /api/tasks/{taskId}/detail and shows approvals and attachments.
+- OBS credentials are now expected to be provided via environment variables for security. The application will read these env vars if not set in application.yml:
+  - OBS_ENDPOINT (e.g., https://obs.cn-north-4.myhuaweicloud.com)
+  - OBS_ACCESS_KEY
+  - OBS_SECRET_KEY
+  - OBS_BUCKET
+  - OBS_PRESIGNED_EXPIRY (seconds)
 
-Configuration (application.yml):
-- app.obs.endpoint: OBS endpoint (e.g. https://obs.cn-north-4.myhuaweicloud.com)
-- app.obs.accessKey / secretKey
-- app.obs.bucket
+- JWT secret for authentication should be provided via environment variable JWT_SECRET.
 
-Presigned URLs expire in 1 hour by default in PoC.
+CI/CD example (GitHub Actions) secrets to set:
+- OBS_ENDPOINT
+- OBS_ACCESS_KEY
+- OBS_SECRET_KEY
+- OBS_BUCKET
+- JWT_SECRET
+
+In workflow, pass them as environment variables to the build/run steps.

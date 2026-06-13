@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Task Detail (Frontend)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>body{font-family:Arial,Helvetica,sans-serif}</style>
+  </head>
+  <body>
+    <div id="root">Loading...</div>
+    <script>
+      async function fetchDetail() {
+        const taskId = new URLSearchParams(location.search).get('taskId');
+        if (!taskId) { document.getElementById('root').innerText = 'Please provide ?taskId=...'; return; }
+        const tenantId = localStorage.getItem('tenantId') || 'tenant_abc';
+        const res = await fetch('/api/tasks/' + taskId + '/detail', { headers: { 'X-Tenant-Id': tenantId } });
+        const data = await res.json();
+        const root = document.getElementById('root');
+        root.innerHTML = '';
+        const t = data.task;
+        const h = document.createElement('div');
+        h.innerHTML = `<h2>Task: ${t.name} (${t.id})</h2><p>Assignee: ${t.assignee}</p>`;
+        root.appendChild(h);
+
+        const approvals = t.approvals || [];
+        approvals.forEach(a => {
+          const d = document.createElement('div');
+          d.style.border = '1px solid #ccc'; d.style.margin='8px'; d.style.padding='8px';
+          d.innerHTML = `<b>Approver:</b> ${a.approverId} <br/><b>Time:</b> ${a.createdAt} <br/><b>Comment:</b> ${a.comment}`;
+          const ul = document.createElement('ul');
+          (a.attachments||[]).forEach(att => {
+            const li = document.createElement('li');
+            const ael = document.createElement('a');
+            ael.href = att.downloadUrl; ael.innerText = att.filename; ael.target = '_blank';
+            li.appendChild(ael);
+            ul.appendChild(li);
+          });
+          d.appendChild(ul);
+          root.appendChild(d);
+        });
+      }
+      fetchDetail();
+    </script>
+  </body>
+</html>

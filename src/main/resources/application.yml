@@ -1,14 +1,15 @@
-app:
-  upload:
-    dir: uploads
-  obs:
-    endpoint: https://obs.cn-north-4.myhuaweicloud.com
-    accessKey: YOUR_OBS_ACCESS_KEY
-    secretKey: YOUR_OBS_SECRET_KEY
-    bucket: your-bucket-name
-
 server:
   port: 8080
+
+app:
+  upload:
+    max-size: 10485760 # 10 MB default
+  obs:
+    endpoint: ${OBS_ENDPOINT:}
+    accessKey: ${OBS_ACCESS_KEY:}
+    secretKey: ${OBS_SECRET_KEY:}
+    bucket: ${OBS_BUCKET:}
+    presignedExpirySeconds: ${OBS_PRESIGNED_EXPIRY:3600}
 
 spring:
   datasource:

@@ -1,1 +1,1 @@
-{"name":"flowable-task-frontend","version":"0.1.0","private":true,"dependencies":{"react":"^18.2.0","react-dom":"^18.2.0","axios":"^1.4.0"},"scripts":{"start":"serve -s build","build":"echo 'Use a simple static build step in PoC'"}}
+{"name":"flowable-task-frontend","version":"0.1.0","private":true,"dependencies":{"react":"^18.2.0","react-dom":"^18.2.0","axios":"^1.4.0"},"scripts":{"start":"serve -s build","build":"echo 'Run your front-end build (e.g., using Vite or CRA) and copy build to backend static folder'"}}
