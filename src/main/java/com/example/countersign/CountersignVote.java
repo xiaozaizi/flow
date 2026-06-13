@@ -15,4 +15,8 @@ public class CountersignVote {
     public CountersignVote() {}
     public CountersignVote(Long countersignTaskId, String voter, String vote) { this.countersignTaskId = countersignTaskId; this.voter = voter; this.vote = vote; this.createdAt = Instant.now(); }
     public Long getId() { return id; }
+    public Long getCountersignTaskId() { return countersignTaskId; }
+    public String getVoter() { return voter; }
+    public String getVote() { return vote; }
+    public Instant getCreatedAt() { return createdAt; }
 }
