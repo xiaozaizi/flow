@@ -13,6 +13,7 @@ import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.history.HistoricTaskInstance;
 import org.flowable.task.api.Task;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 import java.util.Map;
@@ -140,5 +141,16 @@ public class AdminController {
             rp = returnPolicyRepository.save(rp);
         }
         return rp;
+    }
+
+    @DeleteMapping("/return-policies/{id}")
+    public ResponseEntity<?> deleteReturnPolicy(@RequestHeader(value = "X-Admin", required = false) String admin,
+                                                @PathVariable Long id) {
+        checkAdmin(admin);
+        if (!returnPolicyRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        returnPolicyRepository.deleteById(id);
+        return ResponseEntity.ok(Map.of("deleted", id));
     }
 }
