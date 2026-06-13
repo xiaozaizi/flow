@@ -4,6 +4,8 @@ import com.example.audit.AuditService;
 import com.example.tenant.TenantRepository;
 import com.example.tenant.Tenant;
 import com.example.tenant.TenantContext;
+import com.example.returning.ReturnPolicy;
+import com.example.returning.ReturnPolicyRepository;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
@@ -25,13 +27,15 @@ public class AdminController {
     private final RuntimeService runtimeService;
     private final TaskService taskService;
     private final AuditService auditService;
+    private final ReturnPolicyRepository returnPolicyRepository;
 
-    public AdminController(TenantRepository tenantRepository, RepositoryService repositoryService, RuntimeService runtimeService, TaskService taskService, AuditService auditService) {
+    public AdminController(TenantRepository tenantRepository, RepositoryService repositoryService, RuntimeService runtimeService, TaskService taskService, AuditService auditService, ReturnPolicyRepository returnPolicyRepository) {
         this.tenantRepository = tenantRepository;
         this.repositoryService = repositoryService;
         this.runtimeService = runtimeService;
         this.taskService = taskService;
         this.auditService = auditService;
+        this.returnPolicyRepository = returnPolicyRepository;
     }
 
     // Simple admin guard: require X-Admin header = true
@@ -108,5 +112,33 @@ public class AdminController {
                 "detail", a.getDetail(),
                 "createdAt", a.getCreatedAt()
         )).collect(Collectors.toList());
+    }
+
+    // ReturnPolicy management
+    @GetMapping("/return-policies")
+    public List<ReturnPolicy> listReturnPolicies(@RequestHeader(value = "X-Admin", required = false) String admin) {
+        checkAdmin(admin);
+        return returnPolicyRepository.findAll();
+    }
+
+    @PostMapping("/return-policies")
+    public ReturnPolicy createOrUpdateReturnPolicy(@RequestHeader(value = "X-Admin", required = false) String admin,
+                                                   @RequestParam String tenantId,
+                                                   @RequestParam String processDefinitionKey,
+                                                   @RequestParam(defaultValue = "false") boolean allowAll,
+                                                   @RequestParam(required = false) String allowedTargets) {
+        checkAdmin(admin);
+        var opt = returnPolicyRepository.findByTenantIdAndProcessDefinitionKey(tenantId, processDefinitionKey);
+        ReturnPolicy rp;
+        if (opt.isPresent()) {
+            rp = opt.get();
+            // naive update via new entity for PoC
+            rp = new ReturnPolicy(tenantId, processDefinitionKey, allowAll, allowedTargets);
+            rp = returnPolicyRepository.save(rp);
+        } else {
+            rp = new ReturnPolicy(tenantId, processDefinitionKey, allowAll, allowedTargets);
+            rp = returnPolicyRepository.save(rp);
+        }
+        return rp;
     }
 }

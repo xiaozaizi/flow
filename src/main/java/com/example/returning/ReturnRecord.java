@@ -1,7 +1,6 @@
 package com.example.returning;
 
 import javax.persistence.*;
-import java.time.Instant;
 
 @Entity
 public class ReturnRecord {
@@ -11,18 +10,18 @@ public class ReturnRecord {
     private Integer times;
     private String lastReturnBy;
     private String lastReason;
-    private Instant updatedAt;
+    private java.time.Instant updatedAt;
 
     public ReturnRecord() {}
     public ReturnRecord(String processInstanceId) {
         this.processInstanceId = processInstanceId;
         this.times = 0;
-        this.updatedAt = Instant.now();
+        this.updatedAt = java.time.Instant.now();
     }
 
     public Long getId() { return id; }
     public String getProcessInstanceId() { return processInstanceId; }
     public Integer getTimes() { return times; }
-    public void increment() { this.times = (this.times==null?1:this.times+1); this.updatedAt = Instant.now(); }
-    public void setLast(String by, String reason) { this.lastReturnBy = by; this.lastReason = reason; this.updatedAt = Instant.now(); }
+    public void increment() { this.times = (this.times==null?1:this.times+1); this.updatedAt = java.time.Instant.now(); }
+    public void setLast(String by, String reason) { this.lastReturnBy = by; this.lastReason = reason; this.updatedAt = java.time.Instant.now(); }
 }
