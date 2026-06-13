@@ -1,25 +1,105 @@
 openapi: 3.0.0
 info:
-  title: Flowable SaaS PoC API
-  version: 0.1.0
+  title: Flowable SaaS Workflow Platform API
+  version: 0.2.0
+servers:
+  - url: http://localhost:8080
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: integer
+        tenantId:
+          type: string
+        name:
+          type: string
+        apiKey:
+          type: string
+    ProcessStartRequest:
+      type: object
+      properties:
+        businessKey:
+          type: string
+        variables:
+          type: object
+    TaskSummary:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        assignee: { type: string }
+        processInstanceId: { type: string }
+    ApprovalRecord:
+      type: object
+      properties:
+        id: { type: integer }
+        approverId: { type: string }
+        comment: { type: string }
+        createdAt: { type: string, format: date-time }
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+    Attachment:
+      type: object
+      properties:
+        id: { type: integer }
+        filename: { type: string }
+        uploadedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        downloadUrl: { type: string }
 paths:
   /tenants:
     post:
       summary: Create tenant (onboarding)
-      parameters:
-        - name: tenantId
-          in: query
-          required: true
-          schema: { type: string }
-        - name: name
-          in: query
-          required: true
-          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                tenantId: { type: string }
+                name: { type: string }
       responses:
         '200':
           description: tenant created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+  /auth/token:
+    post:
+      summary: Obtain JWT token (PoC)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
   /api/process/start/{processKey}:
     post:
+      summary: Start a process instance for the tenant
       parameters:
         - name: processKey
           in: path
@@ -29,11 +109,36 @@ paths:
           in: header
           required: true
           schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessStartRequest'
       responses:
-        '200': { description: started }
+        '200':
+          description: started
+  /api/tasks:
+    get:
+      summary: List tasks for tenant (optionally by assignee)
+      parameters:
+        - name: X-Tenant-Id
+          in: header
+          required: true
+          schema: { type: string }
+        - name: assignee
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskSummary'
   /api/tasks/{taskId}/approve:
     post:
-      summary: Approve task, create approval record
+      summary: Approve task and create approval record
       parameters:
         - name: taskId
           in: path
@@ -50,27 +155,9 @@ paths:
               type: object
               properties:
                 comment: { type: string }
-                attachmentIds: { type: string, description: "comma separated ids" }
+                attachmentIds: { type: string, description: 'comma separated ids' }
       responses:
         '200': { description: ok }
-  /api/tasks/{taskId}/returnTo:
-    post:
-      summary: Return task to a specified historic activity
-      parameters:
-        - name: taskId
-          in: path
-          required: true
-          schema: { type: string }
-        - name: targetActivityId
-          in: query
-          required: true
-          schema: { type: string }
-        - name: reason
-          in: query
-          required: true
-          schema: { type: string }
-      responses:
-        '200': { description: returned }
   /api/tasks/{taskId}/attachments:
     post:
       summary: Upload attachment (multipart). If comment provided, create approval record.
@@ -89,9 +176,116 @@ paths:
                 comment: { type: string }
       responses:
         '200': { description: uploaded }
-components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+    get:
+      summary: List attachments for task
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Attachment'
+  /api/tasks/{taskId}/detail:
+    get:
+      summary: Task detail including approvals and attachments with presigned URLs
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: X-Tenant-Id
+          in: header
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task: { type: object }
+  /api/returns/tasks/{taskId}/returnTo:
+    post:
+      summary: Return current task to a specified historic activity
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: targetActivityId
+          in: query
+          required: true
+          schema: { type: string }
+        - name: reason
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: returned }
+  /api/countersign/create:
+    post:
+      summary: Create a countersign task for a userTask
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                taskId: { type: string }
+                processInstanceId: { type: string }
+                rule: { type: string }
+                percent: { type: number }
+      responses:
+        '200':
+          description: created
+  /api/countersign/{csId}/vote:
+    post:
+      summary: Vote on a countersign task
+      parameters:
+        - name: csId
+          in: path
+          required: true
+          schema: { type: number }
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                voter: { type: string }
+                vote: { type: string }
+      responses:
+        '200': { description: ok }
+  /admin/tenants:
+    get:
+      summary: Admin list tenants (requires ROLE_ADMIN)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tenant'
+  /client/callback:
+    post:
+      summary: Client callback endpoint (business system)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                processInstanceId: { type: string }
+                businessKey: { type: string }
+                status: { type: string }
+      responses:
+        '200': { description: received }
